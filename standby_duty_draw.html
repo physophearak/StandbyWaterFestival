@@ -957,7 +957,7 @@ function render() {
     qrToggle.style.display = '';
     document.getElementById('pageSubtitle').innerHTML = 'Shared roster · everyone sees the same result<br>Refreshes automatically after each draw';
     const resetBtn = document.getElementById('resetBtn');
-    resetBtn.disabled = Object.keys(assignments).length === 0;
+    resetBtn.disabled = false; // always allow clearing (old/hidden draws may still be stored)
   }
 
   const totalFilled = Object.keys(assignments).length;
@@ -1180,8 +1180,7 @@ let resetConfirmTimer = null;
 async function handleReset() {
   const btn = document.getElementById('resetBtn');
 
-  if (Object.keys(assignments).length === 0) return;
-
+  
   if (!btn.classList.contains('confirming')) {
     // Arm the confirmation
     btn.classList.add('confirming');
@@ -1204,8 +1203,9 @@ async function handleReset() {
   try {
     await saveAssignments();
     setStatus('All draws cleared.', false);
+      await loadAssignments();
   } catch (e) {
-    setStatus('Could not clear the draw — please try again.', true);
+    setStatus('Could not clear the draw: ' + (e.message || e), true);
   }
   btn.textContent = 'Clear all draws';
   render();
