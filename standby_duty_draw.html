@@ -1175,40 +1175,46 @@ document.getElementById('modalCloseBtn').addEventListener('click', () => {
   render();
 });
 
-let resetConfirmTimer = null;
-
 async function handleReset() {
   const btn = document.getElementById('resetBtn');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  await loadAssignments();
+  const n = Object.keys(assignments).length;
+  btn.disabled = false;
+  btn.textContent = 'Clear all draws';
+  if (!window.confirm('Clear ALL draws (' + n + ' currently saved)? This cannot be undone.')) return;
 
-  
-  if (!btn.classList.contains('confirming')) {
-    // Arm the confirmation
-    btn.classList.add('confirming');
-    btn.textContent = 'Click again to confirm';
-    clearTimeout(resetConfirmTimer);
-    resetConfirmTimer = setTimeout(() => {
-      btn.classList.remove('confirming');
-      btn.textContent = 'Clear all draws';
-    }, 4000);
-    return;
-  }
-
-  // Second click within the window: actually clear
-  clearTimeout(resetConfirmTimer);
-  btn.classList.remove('confirming');
   btn.disabled = true;
   btn.textContent = 'Clearing…';
-
-  assignments = {};
+  let msg, isErr = false;
   try {
-    await saveAssignments();
-    setStatus('All draws cleared.', false);
-      await loadAssignments();
+    const res = await fetchWithTimeout(firebaseUrl(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'null' // removes the whole draw list in Firebase
+    }, 8000);
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + (bodyText ? ' — ' + bodyText : ''));
+    }
+    assignments = {};
+    await loadAssignments();
+    const left = Object.keys(assignments).length;
+    if (left === 0) {
+      msg = 'All draws cleared.';
+    } else {
+      msg = 'Cleared, but ' + left + ' draw(s) are back — someone drew again right after.';
+      isErr = true;
+    }
   } catch (e) {
-    setStatus('Could not clear the draw: ' + (e.message || e), true);
+    msg = 'Could not clear the draws: ' + ((e && e.name === 'AbortError') ? 'timed out reaching the data store.' : (e.message || e));
+    isErr = true;
   }
   btn.textContent = 'Clear all draws';
   render();
+  setStatus(msg, isErr);
+  window.alert(msg);
 }
 
 document.getElementById('resetBtn').addEventListener('click', handleReset);
