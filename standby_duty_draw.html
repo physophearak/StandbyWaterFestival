@@ -808,6 +808,12 @@ const PARTICIPANTS = [
 ];
 
 const STORE_KEY = 'standby_draw_oct_2026';
+
+// Fixed results: this person's draw always lands on this Day+Shift,
+// and the slot is held for them so nobody else can draw it.
+const FIXED_DRAWS = {
+  'Mr. Ouk Sopheak': 'nov23_s1'
+};
 let assignments = {}; // name -> day key
 
 // --- Shared data store (Firebase Realtime Database) ---
@@ -920,7 +926,8 @@ function capacityRemaining(comboKey) {
   const combo = comboByKey(comboKey);
   if (!combo) return 0;
   const used = Object.values(assignments).filter(v => v === comboKey).length;
-  return combo.cap - used;
+  const held = Object.keys(FIXED_DRAWS).filter(n => FIXED_DRAWS[n] === comboKey && assignments[n] !== comboKey).length;
+  return combo.cap - used - held;
 }
 
 function availableCombos() {
@@ -987,7 +994,7 @@ function render() {
             <ul class="slot-list">
               ${Array.from({length: combo.cap}).map((_, i) => {
                 const n = names[i];
-                return n ? `<li>${n}</li>` : `<li class="empty">open slot</li>`;
+                return n ? `<li>${n}${FIXED_DRAWS[n] === combo.comboKey ? ' (fixed)' : ''}</li>` : `<li class="empty">open slot</li>`;
               }).join('')}
             </ul>
           </div>
@@ -1035,7 +1042,7 @@ function buildTag(name) {
     const btn = document.createElement('button');
     btn.className = 'draw-btn';
     btn.textContent = 'Draw';
-    btn.disabled = availableCombos().length === 0;
+    btn.disabled = !FIXED_DRAWS[name] && availableCombos().length === 0;
     btn.addEventListener('click', () => openDrawModal(name));
     tag.appendChild(btn);
   }
@@ -1081,7 +1088,7 @@ async function openDrawModal(name) {
     return;
   }
 
-  const pool = availableCombos();
+  const pool = FIXED_DRAWS[name] ? [FIXED_DRAWS[name]] : availableCombos();
   if (pool.length === 0) {
     render();
     setStatus('All slots are full.', true);
@@ -1089,7 +1096,7 @@ async function openDrawModal(name) {
   }
 
   // Pick the real result FIRST, so the animation always ends on the true outcome.
-  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  const chosen = FIXED_DRAWS[name] || pool[Math.floor(Math.random() * pool.length)];
 
   activeDrawName = name;
   buildWheel();
