@@ -718,6 +718,7 @@
   <details class="board-details" id="boardDetails" open>
     <summary id="boardSummary">Duty board — who's on which day</summary>
     <div class="board" id="board"></div>
+<p id="fixedNote" class="hidden" style="font-family:'Segoe UI',Arial,sans-serif; font-size:12px; color:var(--ink-soft); margin:10px 0 0;">* Assigned by the organizer, not drawn.</p>
   </details>
 
   <div class="footer-row no-print" id="footerRow">
@@ -968,6 +969,8 @@ function render() {
   }
 
   const totalFilled = Object.keys(assignments).length;
+  document.getElementById('fixedNote').classList.toggle('hidden',
+    !Object.keys(FIXED_DRAWS).some(n => assignments[n] === FIXED_DRAWS[n]));
   document.getElementById('boardSummary').textContent =
     'Duty board — who\'s on which day (' + totalFilled + ' / ' + PARTICIPANTS.length + ' drawn)';
 
@@ -994,7 +997,7 @@ function render() {
             <ul class="slot-list">
               ${Array.from({length: combo.cap}).map((_, i) => {
                 const n = names[i];
-                return n ? `<li>${n}${FIXED_DRAWS[n] === combo.comboKey ? ' (fixed)' : ''}</li>` : `<li class="empty">open slot</li>`;
+                return n ? `<li>${n}${FIXED_DRAWS[n] === combo.comboKey ? ' *' : ''}</li>` : `<li class="empty">open slot</li>`;
               }).join('')}
             </ul>
           </div>
